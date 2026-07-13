@@ -1,78 +1,62 @@
 workflows:
-  android-release:
+  android-release-apk:
     name: eGaming - Android Release APK
-    max_build_duration: 60
-    instance_type: linux_x2
+    max_build_duration: 90
+    # linux_x2 requires billing enabled (paid/team account). mac_mini_m2 is the
+    # instance type covered by Codemagic's free personal plan (500 free minutes/
+    # month) and can build Android APKs just fine since Flutter's Android
+    # toolchain runs the same way on macOS build machines.
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
-      # لا حاجة لأي مجموعة متغيرات بيئة (keystore) في هذا الإعداد: يُبنى APK
-      # بتوقيع تجريبي (debug signing fallback) صالح للتثبيت والتجربة المباشرة.
-      # لتوقيع رسمي لاحقًا قبل النشر على Google Play، أضف مجموعة "keystore"
-      # من Codemagic (Environment variables > Groups) وفعّل خطوة التوقيع
-      # الموضّحة كتعليق أسفل هذا الملف.
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: '*'
-          include: true
-          source: true
+      java: 17
+      vars:
+        PACKAGE_NAME: "com.egaming.app"
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.pub-cache
 
     scripts:
-      - name: عرض إصدار Flutter المستخدم (للتشخيص فقط)
+      - name: Show tool versions
         script: |
           flutter --version
+          java -version
 
-      - name: توليد مجلد android تلقائيًا إن لم يكن موجودًا
+      - name: Regenerate Gradle wrapper jar
         script: |
-          set -e
-          if [ ! -d "android" ]; then
-            echo "مجلد android غير موجود — يُنشأ تلقائيًا بإصدارات Gradle/AGP/Kotlin المتوافقة مع Flutter الحالي"
-            flutter create --platforms=android --org com.egaming.tournaments --project-name egaming .
-          else
-            echo "مجلد android موجود بالفعل — تخطي الإنشاء"
+          # gradle-wrapper.jar is a binary file and is intentionally not committed
+          # to the repository. It is regenerated here using the Gradle that ships
+          # with the Codemagic Flutter image, so the build is fully reproducible
+          # from source control without storing binaries in git.
+          cd android
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            gradle wrapper --gradle-version 8.13
           fi
+          cd ..
 
-      - name: ضبط اسم التطبيق المعروض داخل AndroidManifest.xml
-        script: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if [ -f "$MANIFEST" ]; then
-            sed -i 's/android:label="[^"]*"/android:label="eGaming"/' "$MANIFEST"
-          fi
-
-      - name: تحميل حزم Dart/Flutter
+      - name: Get Flutter packages
         script: |
           flutter pub get
 
-      - name: تحليل الكود (معلومات/تحذيرات غير حرجة لا توقف البناء)
+      - name: Flutter analyze
         script: |
           flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      # - name: (اختياري) فك تشفير ملف التوقيع الرسمي قبل البناء
-      #   script: |
-      #     echo $CM_KEYSTORE | base64 --decode > /tmp/keystore.jks
-      #     cat >> android/key.properties <<KEYEOF
-      #     storePassword=$CM_KEYSTORE_PASSWORD
-      #     keyPassword=$CM_KEY_PASSWORD
-      #     keyAlias=$CM_KEY_ALIAS
-      #     storeFile=/tmp/keystore.jks
-      #     KEYEOF
-
-      - name: بناء ملف APK بنسخة Release
+      - name: Build release APK
         script: |
-          flutter build apk --release
+          flutter build apk --release --no-tree-shake-icons
 
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
-      - build/app/outputs/**/mapping.txt
+      - build/app/outputs/mapping/release/*.txt
 
-    publishing:
-      email:
-        recipients: []
-        # أضف بريدك الإلكتروني هنا لتصلك نسخة APK تلقائيًا بعد كل بناء ناجح:
-        # recipients:
-        #   - your-email@example.com
-        notify:
-          success: false
-          failure: false
+    # Optional: uncomment and set your own email to get notified when the build
+    # finishes. Left disabled by default so the workflow builds with zero setup.
+    # publishing:
+    #   email:
+    #     recipients:
+    #       - your-email@example.com
+    #     notify:
+    #       success: true
+    #       failure: true
