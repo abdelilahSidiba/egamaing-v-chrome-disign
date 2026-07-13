@@ -37,7 +37,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final file = await _backupService.createBackup();
       if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)], text: 'نسخة احتياطية من eGaming');
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], text: 'نسخة احتياطية من eGaming'),
+      );
       _showSnack('تم إنشاء النسخة الاحتياطية بنجاح.');
     } catch (e) {
       _showSnack('حدث خطأ أثناء إنشاء النسخة الاحتياطية: $e');
@@ -220,7 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => settings.setThemeMode(mode),
             leading: Icon(
               selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              color: selected ? Theme.of(context).colorScheme.primary : null,
+              color: selected ? AppColors.gold : AppColors.textMuted,
             ),
             title: Text(label),
           );

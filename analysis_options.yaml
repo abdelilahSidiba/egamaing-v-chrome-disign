@@ -2,11 +2,4 @@ include: package:flutter_lints/flutter.yaml
 
 linter:
   rules:
-    # نُبقي القواعد الافتراضية من flutter_lints فقط، دون قواعد إضافية صارمة
-    # لتفادي أي مفاجآت في بيئة البناء على Codemagic.
-
-analyzer:
-  errors:
-    # نخفّض بعض الملاحظات غير الحرجة إلى "info" بدل "warning" حتى لا تُعطّل
-    # خطوط أنابيب البناء (CI) رغم أنها لا تمثل أخطاء برمجية حقيقية.
-    deprecated_member_use: info
+    # يمكن إضافة أو تعطيل قواعد إضافية هنا لاحقًا حسب أسلوب الفريق.
