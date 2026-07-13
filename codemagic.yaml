@@ -1,0 +1,78 @@
+workflows:
+  android-release:
+    name: eGaming - Android Release APK
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+      # لا حاجة لأي مجموعة متغيرات بيئة (keystore) في هذا الإعداد: يُبنى APK
+      # بتوقيع تجريبي (debug signing fallback) صالح للتثبيت والتجربة المباشرة.
+      # لتوقيع رسمي لاحقًا قبل النشر على Google Play، أضف مجموعة "keystore"
+      # من Codemagic (Environment variables > Groups) وفعّل خطوة التوقيع
+      # الموضّحة كتعليق أسفل هذا الملف.
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: '*'
+          include: true
+          source: true
+
+    scripts:
+      - name: عرض إصدار Flutter المستخدم (للتشخيص فقط)
+        script: |
+          flutter --version
+
+      - name: توليد مجلد android تلقائيًا إن لم يكن موجودًا
+        script: |
+          set -e
+          if [ ! -d "android" ]; then
+            echo "مجلد android غير موجود — يُنشأ تلقائيًا بإصدارات Gradle/AGP/Kotlin المتوافقة مع Flutter الحالي"
+            flutter create --platforms=android --org com.egaming.tournaments --project-name egaming .
+          else
+            echo "مجلد android موجود بالفعل — تخطي الإنشاء"
+          fi
+
+      - name: ضبط اسم التطبيق المعروض داخل AndroidManifest.xml
+        script: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ]; then
+            sed -i 's/android:label="[^"]*"/android:label="eGaming"/' "$MANIFEST"
+          fi
+
+      - name: تحميل حزم Dart/Flutter
+        script: |
+          flutter pub get
+
+      - name: تحليل الكود (معلومات/تحذيرات غير حرجة لا توقف البناء)
+        script: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      # - name: (اختياري) فك تشفير ملف التوقيع الرسمي قبل البناء
+      #   script: |
+      #     echo $CM_KEYSTORE | base64 --decode > /tmp/keystore.jks
+      #     cat >> android/key.properties <<KEYEOF
+      #     storePassword=$CM_KEYSTORE_PASSWORD
+      #     keyPassword=$CM_KEY_PASSWORD
+      #     keyAlias=$CM_KEY_ALIAS
+      #     storeFile=/tmp/keystore.jks
+      #     KEYEOF
+
+      - name: بناء ملف APK بنسخة Release
+        script: |
+          flutter build apk --release
+
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/**/mapping.txt
+
+    publishing:
+      email:
+        recipients: []
+        # أضف بريدك الإلكتروني هنا لتصلك نسخة APK تلقائيًا بعد كل بناء ناجح:
+        # recipients:
+        #   - your-email@example.com
+        notify:
+          success: false
+          failure: false
