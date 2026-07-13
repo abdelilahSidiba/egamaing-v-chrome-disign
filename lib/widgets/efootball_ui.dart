@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'app_colors.dart';
+import '../theme/app_colors.dart';
 
 /// خلفية الاستاد الداكنة المتوهجة — تُستخدم كخلفية موحّدة لكل شاشات التطبيق
 /// (مستوحاة من الفصل 9.2: "خلف البطاقة تصميم مستوحى من البطولة")
